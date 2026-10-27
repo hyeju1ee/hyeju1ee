@@ -1,0 +1,8 @@
+# GitHub에 올리지 않을 것 (나머지는 전부 올라감)
+node_modules/
+.vercel/
+.env
+.env.*
+.DS_Store
+Thumbs.db
+*.log
