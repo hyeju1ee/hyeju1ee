@@ -1,7 +1,7 @@
 // SUBAC 서비스 워커: 앱 화면은 오프라인에서도 열리고, 새 버전은 다음 실행 때 반영된다.
-const VERSION = "subac-v3";
+const VERSION = "subac-v4";
 const SHELL = [
-  "./", "index.html", "app.js", "backend.js", "journals.js", "firebase-config.js", "manifest.webmanifest",
+  "./", "index.html", "app.js", "backend.js", "journals.js", "beach.js", "firebase-config.js", "manifest.webmanifest",
   "icons/icon-192.png", "icons/icon-512.png", "icons/apple-touch-icon.png",
   "journals/pages.json",
 ];

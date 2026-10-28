@@ -1,6 +1,7 @@
 // SUBAC 웹앱 화면 로직
 import { JOURNALS } from "./journals.js";
 import * as B from "./backend.js";
+import { BEACH_SVG } from "./beach.js";
 
 /* ---------- constants ---------- */
 const TYPES = {
@@ -244,6 +245,7 @@ function melonSVG(bites){
   }
   return `<svg class="melon" viewBox="0 0 200 130" aria-hidden="true">
     <defs>
+      <clipPath id="${u}c"><path d="M18 34 H182 A82 76 0 0 1 18 34 Z"/></clipPath>
       <mask id="${u}k"><rect x="0" y="0" width="200" height="140" fill="#fff"/>${spots.join("")}</mask>
       <radialGradient id="${u}f" cx=".5" cy="0" r="1"><stop offset="0" stop-color="#FF7A73"/><stop offset=".7" stop-color="#EC4F4B"/><stop offset="1" stop-color="#C8322F"/></radialGradient>
       <linearGradient id="${u}r" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4DAE68"/><stop offset="1" stop-color="#1E4D24"/></linearGradient>
@@ -255,6 +257,10 @@ function melonSVG(bites){
       ${[[60,58],[90,74],[120,60],[140,82],[75,92],[105,100],[45,72],[155,64],[125,106],[100,52]].map(([x,y])=>`<ellipse cx="${x}" cy="${y}" rx="3.2" ry="5" fill="#1B1B1B" transform="rotate(${(x%30)-15} ${x} ${y})"/>`).join("")}
       <path d="M22 38 H178" stroke="#fff" stroke-opacity=".45" stroke-width="3" stroke-linecap="round"/>
     </g>
+    ${spots.length ? `<g mask="url(#${u}k)" clip-path="url(#${u}c)" fill="none">
+      ${spots.map(c => c.replace('fill="#000"', 'stroke="#FF9F96" stroke-width="10" stroke-opacity=".7"')).join("")}
+      ${spots.map(c => c.replace('fill="#000"', 'stroke="#B5302C" stroke-width="4"')).join("")}
+    </g>` : ""}
   </svg>`;
 }
 function viewGame(){
@@ -271,22 +277,22 @@ function viewGame(){
     </div>`;
   if (g.phase === "idle") return `
     <h1>수박 빨리 먹기</h1>
-    <div class="glass game-card">
-      <div class="stage" style="height:220px;cursor:default">${melonSVG(3)}</div>
-      <div><b style="font-size:17px">제한 시간 ${GAME_SECONDS}초, 몇 통이나 먹을 수 있을까요?</b>
-      <p class="muted small" style="margin:4px 0 0">수박을 ${BITES_PER_MELON}번 탭하면 한 통을 다 먹어요. 순위에는 한 사람당 최고 기록 하나만 올라가요.</p></div>
-      <div class="me-row"><span class="small muted">플레이어</span><b>${esc(myName())}</b>${me ? `<span class="small muted">최고 ${me.best}통${myRank?` · ${myRank}위`:""}</span>` : `<span class="small muted">첫 도전</span>`}</div>
-      <button class="btn btn-red pressable" data-act="start" id="startBtn">게임 시작</button>
+    <div class="game-card beach">${BEACH_SVG}
+      <div class="stage" style="height:240px;cursor:default">${melonSVG(3)}</div>
+      <div class="beach-panel"><b style="font-size:17px">제한 시간 ${GAME_SECONDS}초, 몇 통이나 먹을 수 있을까요?</b>
+      <p class="muted small" style="margin:4px 0 0">수박을 ${BITES_PER_MELON}번 탭하면 한 통을 다 먹어요. 순위에는 한 사람당 최고 기록 하나만 올라가요.</p>
+      <div class="me-row" style="margin-top:12px"><span class="small muted">플레이어</span><b>${esc(myName())}</b>${me ? `<span class="small muted">최고 ${me.best}통${myRank?` · ${myRank}위`:""}</span>` : `<span class="small muted">첫 도전</span>`}</div>
+      <button class="btn btn-red pressable" data-act="start" id="startBtn" style="margin-top:12px">게임 시작</button></div>
     </div>${lbHtml}`;
-  if (g.phase === "countdown") return `<h1>준비하세요, ${esc(myName())}님</h1><div class="glass game-card"><div class="stage"><span class="count-big" id="cd">3</span></div></div>`;
+  if (g.phase === "countdown") return `<h1>준비하세요, ${esc(myName())}님</h1><div class="game-card beach play">${BEACH_SVG}<div class="stage"><span class="count-big" id="cd">3</span></div></div>`;
   if (g.phase === "playing") return `
-    <div class="glass game-card" style="margin-top:6px">
+    <div class="game-card beach play" style="margin-top:6px">${BEACH_SVG}
       <div class="hud">
         <div class="glass"><div class="k">먹은 수박</div><div class="v" id="hudCount">${g.count}<span style="font-size:16px">통</span></div></div>
         <div class="glass"><div class="k">남은 시간</div><div class="v" id="hudTime">${g.left}<span style="font-size:16px">초</span></div></div>
       </div>
       <div class="timebar"><i id="timeFill" style="width:${g.left/GAME_SECONDS*100}%"></i></div>
-      <div class="stage" id="stage" role="button" tabindex="0" aria-label="수박 한 입 먹기">${melonSVG(g.bites)}<div class="hint">탭! 탭! 탭! (스페이스바도 돼요)</div></div>
+      <div class="stage" id="stage" role="button" tabindex="0" aria-label="수박 한 입 먹기">${melonSVG(g.bites)}<div class="hint">수박을 연타!</div></div>
     </div>`;
   // done
   const res = g.result;
@@ -678,9 +684,10 @@ function showOnboarding(){
     <h1 style="margin:8px 0 6px">SUBAC에 오신 걸<br>환영해요</h1>
     <p class="muted" style="margin:0 4px 22px">닉네임과 PIN 4자리만 정하면 바로 시작해요.<br>홈 인사말, 수박게임 순위에 이 닉네임이 쓰여요.</p>
     <form class="form glass onboard-card" id="obForm" autocomplete="off">
-      <div class="field"><label for="obNick">닉네임</label><input id="obNick" maxlength="12" placeholder="예: 수박러버 (2~12자)" autocomplete="nickname" enterkeyhint="next"></div>
+      <div class="field"><label for="obNick">닉네임</label><input id="obNick" maxlength="12" placeholder="예: 수박러버 (2~12자)" autocomplete="nickname" enterkeyhint="next" value="${esc(B.lastNickname())}"></div>
       <div class="field"><label for="obPin">PIN 4자리</label><input id="obPin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="숫자 4자리" autocomplete="off" enterkeyhint="go"></div>
       <p class="small muted" style="margin:-4px 2px 0">다른 휴대폰이나 홈 화면에 설치한 앱에서 같은 닉네임과 PIN을 넣으면 기록이 그대로 이어져요.</p>
+      <label class="check" for="obRemember"><input type="checkbox" id="obRemember" checked><span class="box" aria-hidden="true"></span><span><b>로그인 상태 유지</b><span class="small muted">공용 기기라면 꺼 주세요. 끄면 앱을 닫을 때 로그아웃돼요.</span></span></label>
       <div class="form-err" id="obErr"></div>
       <button class="btn btn-primary" type="submit" id="obBtn">시작하기</button>
     </form>
@@ -689,7 +696,7 @@ function showOnboarding(){
   document.body.appendChild(el);
   document.body.style.overflow = "hidden";
   const nick = $("#obNick"), pin = $("#obPin"), err = $("#obErr"), btn = $("#obBtn");
-  setTimeout(() => nick.focus(), 50);
+  setTimeout(() => (nick.value ? pin : nick).focus(), 50);
   pin.addEventListener("input", () => { pin.value = pin.value.replace(/\D/g, "").slice(0, 4); });
   $("#obForm").addEventListener("submit", async e => {
     e.preventDefault();
@@ -697,7 +704,7 @@ function showOnboarding(){
     if (n.length < 2) { err.textContent = "닉네임은 2자 이상으로 정해 주세요."; nick.focus(); return; }
     if (!/^\d{4}$/.test(p)) { err.textContent = "PIN은 숫자 4자리로 입력해 주세요."; pin.focus(); return; }
     err.textContent = ""; btn.disabled = true; btn.textContent = "확인하는 중…";
-    const r = await B.register(n, p);
+    const r = await B.register(n, p, $("#obRemember").checked);
     if (!r.ok) {
       err.textContent = r.reason === "pin" ? "이미 쓰고 있는 닉네임이에요. 본인이라면 PIN을 다시 확인해 주세요."
         : r.reason === "invalid" ? "닉네임은 2~12자, PIN은 숫자 4자리예요."
@@ -723,11 +730,16 @@ function profileSheet(){
       <div class="row"><span class="grow">수박게임 최고 기록</span><b>${me ? me.best + "통" : "아직 없음"}</b></div>
       <div class="row"><span class="grow">내가 남긴 활동 기록</span><b>${mine}건</b></div>
     </div>
+    <label class="check" for="psRemember" style="margin-top:14px"><input type="checkbox" id="psRemember" ${B.isRemembered() ? "checked" : ""}><span class="box" aria-hidden="true"></span><span><b>로그인 상태 유지</b><span class="small muted">끄면 앱을 닫을 때 로그아웃돼요.</span></span></label>
     <p class="small muted" style="margin:14px 2px">다른 기기에서도 같은 닉네임과 PIN을 입력하면 이어서 쓸 수 있어요.</p>
     <div class="form" style="margin-top:4px">
       ${isStandalone() ? "" : `<button class="btn btn-ghost" id="psInstall">홈 화면에 앱 설치하기</button>`}
       <button class="btn btn-ghost" id="psLogout">이 기기에서 로그아웃</button>
     </div>`, el => {
+      el.querySelector("#psRemember").addEventListener("change", e => {
+        B.setRemember(e.target.checked);
+        toast(e.target.checked ? "로그인 상태를 유지할게요" : "앱을 닫으면 로그아웃돼요");
+      });
       const lo = el.querySelector("#psLogout");
       lo.addEventListener("click", () => {
         if (!lo.classList.contains("arm")) { lo.classList.add("arm"); lo.textContent = "한 번 더 누르면 로그아웃돼요"; setTimeout(() => { lo.classList.remove("arm"); lo.textContent = "이 기기에서 로그아웃"; }, 3000); return; }

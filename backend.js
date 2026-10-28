@@ -18,8 +18,23 @@ async function sha256(text){
 }
 const pinHash = (key, pin) => sha256(`subac:${key}:${pin}`);
 
-function readProfile(){ try { return JSON.parse(localStorage.getItem(PROFILE_KEY) || "null"); } catch(e) { return null; } }
-function writeProfile(p){ try { p ? localStorage.setItem(PROFILE_KEY, JSON.stringify(p)) : localStorage.removeItem(PROFILE_KEY); } catch(e) {} }
+const LAST_NICK_KEY = "subac-last-nick";
+// 로그인 상태 유지: 켜면 localStorage(계속 유지), 끄면 sessionStorage(앱·브라우저를 닫으면 로그아웃)
+function readProfile(){
+  try { return JSON.parse(localStorage.getItem(PROFILE_KEY) || sessionStorage.getItem(PROFILE_KEY) || "null"); } catch(e) { return null; }
+}
+function writeProfile(p, remember){
+  try {
+    if (remember === undefined) remember = isRemembered();
+    localStorage.removeItem(PROFILE_KEY); sessionStorage.removeItem(PROFILE_KEY);
+    if (!p) return;
+    (remember ? localStorage : sessionStorage).setItem(PROFILE_KEY, JSON.stringify(p));
+    if (remember) localStorage.setItem(LAST_NICK_KEY, p.nickname); else localStorage.removeItem(LAST_NICK_KEY);
+  } catch(e) {}
+}
+export function isRemembered(){ try { return sessionStorage.getItem(PROFILE_KEY) === null; } catch(e) { return true; } }
+export function setRemember(on){ const p = readProfile(); if (p) writeProfile(p, on); }
+export function lastNickname(){ try { return localStorage.getItem(LAST_NICK_KEY) || ""; } catch(e) { return ""; } }
 
 // ---- 데모(로컬) 모드 저장소 ----
 const LOCAL_KEY = "subac-local-data";
@@ -72,14 +87,14 @@ export const getMode = () => mode;
 
 // ---- 최초 닉네임 등록 / 다른 기기에서 이어서 쓰기 ----
 // 반환: {ok:true, profile, created} 또는 {ok:false, reason:"pin"|"invalid"|"network"}
-export async function register(nickname, pin){
+export async function register(nickname, pin, remember = true){
   nickname = nickname.normalize("NFC").trim();
   if (nickname.length < 2 || nickname.length > 12 || !/^\d{4}$/.test(pin)) return {ok:false, reason:"invalid"};
   const key = nickKey(nickname);
   const h = await pinHash(key, pin);
   if (mode !== "live") {
     const profile = {key, nickname};
-    writeProfile(profile);
+    writeProfile(profile, remember);
     return {ok:true, profile, created:true};
   }
   try {
@@ -100,7 +115,7 @@ export async function register(nickname, pin){
     batch.set(fs.doc(db, "users", uid), {key, nickname});
     await batch.commit();
     const profile = {key, nickname};
-    writeProfile(profile);
+    writeProfile(profile, remember);
     return {ok:true, profile, created};
   } catch(e) {
     if (e && e.code === "permission-denied") return {ok:false, reason:"pin"};
