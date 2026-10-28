@@ -1,9 +1,9 @@
 // SUBAC 서비스 워커: 앱 화면은 오프라인에서도 열리고, 새 버전은 다음 실행 때 반영된다.
-const VERSION = "subac-v2";
+const VERSION = "subac-v3";
 const SHELL = [
   "./", "index.html", "app.js", "backend.js", "journals.js", "firebase-config.js", "manifest.webmanifest",
   "icons/icon-192.png", "icons/icon-512.png", "icons/apple-touch-icon.png",
-  "vendor/pdfjs/pdf.min.js", "vendor/pdfjs/pdf.worker.min.js",
+  "journals/pages.json",
 ];
 
 self.addEventListener("install", e => {
@@ -40,12 +40,13 @@ self.addEventListener("fetch", e => {
   if (url.origin === location.origin && (url.pathname.includes("/api/") || url.pathname.endsWith(".pdf"))) return;
   if (url.hostname.endsWith("googleapis.com") && !url.hostname.startsWith("fonts.")) return;
   if (url.origin === location.origin) {
-    if (url.pathname.includes("/vendor/") || url.pathname.includes("/icons/")) { e.respondWith(cacheFirst(req)); return; }
+    // 학회지 쪽 이미지와 아이콘은 바뀌지 않으므로 한 번 본 쪽은 오프라인에서도 열린다
+    if (url.pathname.includes("/journals/pages/") || url.pathname.includes("/icons/")) { e.respondWith(cacheFirst(req)); return; }
     e.respondWith(networkFirst(req));
     return;
   }
   // 글꼴, Firebase SDK 스크립트
-  if (url.hostname === "fonts.googleapis.com" || url.hostname === "fonts.gstatic.com" || url.hostname === "www.gstatic.com" || url.hostname === "cdn.jsdelivr.net") {
+  if (url.hostname === "fonts.googleapis.com" || url.hostname === "fonts.gstatic.com" || url.hostname === "www.gstatic.com") {
     e.respondWith(cacheFirst(req));
   }
 });

@@ -328,7 +328,8 @@ article .callout{padding:16px 18px;margin:8px 0 22px;font-size:15px;line-height:
 .pdfv-scroll{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;padding:12px max(12px,env(safe-area-inset-right,0px)) calc(24px + env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px));background:var(--bg-2)}
 .pdfv-pages{width:100%;max-width:none;margin:0 auto;display:flex;flex-direction:column;gap:10px}
 .pdfv-page{position:relative;width:100%;background:#fff;border-radius:6px;box-shadow:0 6px 18px -8px var(--shadow);overflow:hidden}
-.pdfv-page canvas{position:absolute;inset:0;width:100%;height:100%}
+.pdfv-page img{position:absolute;inset:0;width:100%;height:100%;opacity:0;transition:opacity .2s}
+.pdfv-page.loaded img{opacity:1}
 .pdfv-num{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);color:#B9C2BC;font-family:var(--display);font-weight:800;font-size:28px}
 .pdfv-status{display:flex;flex-direction:column;align-items:center;gap:8px;padding:60px 16px;text-align:center}
 @media (min-width:760px){.pdfv-pages{max-width:760px}}
@@ -372,10 +373,12 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
       <stop offset="0" stop-color="#FF8F8A"/><stop offset=".6" stop-color="#EC5653"/><stop offset="1" stop-color="#B92E2C"/>
     </linearGradient>
     <symbol id="logo" viewBox="0 0 100 100">
-      <circle cx="44" cy="56" r="29" fill="none" stroke="url(#gRing)" stroke-width="16" stroke-linecap="round" stroke-dasharray="134 200" transform="rotate(18 44 56)"/>
-      <circle cx="44" cy="56" r="29" fill="none" stroke="#fff" stroke-opacity=".35" stroke-width="3" stroke-linecap="round" stroke-dasharray="60 200" transform="rotate(150 44 56) translate(-3 -3)"/>
-      <path d="M60 42 L57 13 A29 29 0 0 1 88 38 Z" fill="url(#gWedge)" stroke="url(#gWedge)" stroke-width="7" stroke-linejoin="round"/>
-      <path d="M62 20 Q72 20 79 28" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="3" stroke-linecap="round"/>
+      <g transform="translate(-1.5 1)">
+        <circle cx="50" cy="52" r="29.25" fill="none" stroke="url(#gRing)" stroke-width="13.5" stroke-linecap="round" stroke-dasharray="131.7 300" transform="rotate(6 50 52)"/>
+        <circle cx="50" cy="52" r="32.6" fill="none" stroke="#fff" stroke-opacity=".3" stroke-width="2.2" stroke-linecap="round" stroke-dasharray="40 300" transform="rotate(160 50 52)"/>
+        <path d="M54.3 44.8 L63.1 11.96 A34 34 0 0 1 87.67 38.31 Z" fill="url(#gWedge)" stroke="url(#gWedge)" stroke-width="3" stroke-linejoin="round"/>
+        <path d="M65.69 19.22 A28 28 0 0 1 75.75 26.8" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width="2.2" stroke-linecap="round"/>
+      </g>
     </symbol>
   </defs>
 </svg>

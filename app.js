@@ -406,7 +406,7 @@ function renderReader(){
       ${j.parts.map((p,i)=>`<button class="${i===reader.part?"on":""}" data-part="${i}">${p.code} <span class="small" style="font-weight:500">${p.range}</span></button>`).join("")}</div>` : `<div style="height:16px"></div>`}
     <button class="glass part-pdf pressable" data-pdf="${esc(part.file)}" data-page="1" data-title="SUBAC ${esc(j.vol)} · ${part.code}">
       <span class="chip-ic" style="background:var(--red-100)">📄</span>
-      <span class="grow"><b>${part.code} 원문 PDF 열기</b><span class="small muted" style="display:block">${part.range} · 앱 안에서 바로 열려요</span></span>
+      <span class="grow"><b>${part.code} 원문 열기</b><span class="small muted" style="display:block">${part.range} · 앱 안에서 바로 열려요</span></span>
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 5l7 7-7 7"/></svg>
     </button>
     ${j.note && reader.part===j.parts.length-1 ? `<p class="small muted" style="margin:10px 4px 0">${esc(j.note)}</p>` : ""}
@@ -446,7 +446,7 @@ function reportCard(it, part){
           : S.aiReady ? `<button class="btn ${aiText?"btn-ghost":"btn-primary"} btn-sm" data-ai="${it.id}">${aiText?"다시 요약하기":"AI로 목차별 요약 보기"}</button>`
           : `<p class="small muted" style="margin:0">${S.mode==="live" ? "AI 요약이 아직 설정되지 않았어요. 운영진에게 문의해 주세요." : "AI 요약은 학회 서버에 연결됐을 때 쓸 수 있어요."}</p>`}
       </div>` : ""}
-      <button class="btn btn-ghost btn-sm" data-pdf="${esc(part.file)}" data-page="${it.fp}" data-title="${esc(it.title)}" style="width:100%">PDF ${it.page}쪽부터 읽기</button>
+      <button class="btn btn-ghost btn-sm" data-pdf="${esc(part.file)}" data-page="${it.fp}" data-title="${esc(it.title)}" style="width:100%">원문 ${it.page}쪽부터 읽기</button>
     </div>` : ""}
   </div>`;
 }
@@ -501,124 +501,87 @@ async function runSummary(id){
   renderReader();
 }
 
-/* ---------- in-app PDF viewer (pdf.js) ---------- */
-const PDFJS = "vendor/pdfjs/";
-// 글꼴 보조 파일(수백 개)은 저장소에 넣지 않고 CDN에서 받는다
-const PDFJS_DATA = "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/";
-let pdfLibPromise = null;
-function loadPdfLib(){
-  if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
-  if (!pdfLibPromise) pdfLibPromise = new Promise((res, rej) => {
-    const s = document.createElement("script"); s.src = PDFJS + "pdf.min.js";
-    s.onload = () => { window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS + "pdf.worker.min.js"; res(window.pdfjsLib); };
-    s.onerror = () => { pdfLibPromise = null; rej(new Error("lib")); };
-    document.head.appendChild(s);
-  });
-  return pdfLibPromise;
+/* ---------- 학회지 뷰어: 미리 만들어 둔 쪽 이미지(journals/pages)를 보여준다 ---------- */
+// PDF를 휴대폰에서 직접 그리면 일부 학회지의 한글 글꼴이 깨져서, 모든 쪽을 고화질 이미지로 바꿔 두었다.
+let pageInfoPromise = null;
+function loadPageInfo(){
+  pageInfoPromise ||= fetch("journals/pages.json").then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+    .catch(e => { pageInfoPromise = null; throw e; });
+  return pageInfoPromise;
 }
+const partKey = src => src.split("/").pop().replace(/\.pdf$/, "");
 let pv = null;
 function closePdf(){
   if (!pv) return;
-  pv.io && pv.io.disconnect(); pv.task && pv.task.destroy(); pv.el.remove(); pv = null;
+  pv.io && pv.io.disconnect(); pv.el.remove(); pv = null;
   if (!$("#overlay").innerHTML) document.body.style.overflow = "";
 }
 async function openPdf(src, startPage, title){
   closePdf();
+  const key = partKey(src);
   const el = document.createElement("div");
-  el.className = "pdfv"; el.setAttribute("role","dialog"); el.setAttribute("aria-label", title || "PDF");
+  el.className = "pdfv"; el.setAttribute("role","dialog"); el.setAttribute("aria-label", title || "학회지");
   el.innerHTML = `<div class="pdfv-bar">
       <button class="icon-btn glass" data-pv="close" aria-label="닫기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
       <div class="pdfv-title"><b>${esc(title || "학회지")}</b><span class="small muted" id="pvPage">불러오는 중…</span></div>
       <button class="icon-btn glass" data-pv="out" aria-label="축소"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 12h12"/></svg></button>
       <button class="icon-btn glass" data-pv="in" aria-label="확대"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 6v12M6 12h12"/></svg></button>
     </div>
-    <div class="pdfv-scroll" id="pvScroll"><div class="pdfv-status" id="pvStatus"><span class="thinking">PDF를 불러오고 있어요</span><span class="small muted" id="pvProg"></span></div><div class="pdfv-pages" id="pvPages"></div></div>`;
+    <div class="pdfv-scroll" id="pvScroll"><div class="pdfv-status" id="pvStatus"><span class="thinking">학회지를 불러오고 있어요</span></div><div class="pdfv-pages" id="pvPages"></div></div>`;
   document.body.appendChild(el);
   document.body.style.overflow = "hidden";
-  pv = {el, zoom:1, pages:[], rendered:new Map()};
+  pv = {el, zoom:1, pages:[]};
   const me = pv;
   el.querySelector('[data-pv="close"]').addEventListener("click", closePdf);
   el.querySelector('[data-pv="in"]').addEventListener("click", () => setZoom(Math.min(3, me.zoom + .5)));
   el.querySelector('[data-pv="out"]').addEventListener("click", () => setZoom(Math.max(1, me.zoom - .5)));
   try {
-    const lib = await loadPdfLib();
+    const info = await loadPageInfo();
     if (pv !== me) return;
-    me.task = lib.getDocument({url: src, cMapUrl: PDFJS_DATA + "cmaps/", cMapPacked: true, standardFontDataUrl: PDFJS_DATA + "standard_fonts/"});
-    me.task.onProgress = ({loaded, total}) => { const p = $("#pvProg"); if (p && total) p.textContent = Math.round(loaded/total*100) + "%"; };
-    const doc = await me.task.promise;
-    if (pv !== me) return;
-    me.doc = doc;
-    const first = await doc.getPage(1);
-    const vp = first.getViewport({scale:1});
-    me.ratio = vp.height / vp.width;
+    const heights = info[key];
+    if (!heights) throw new Error("no pages");
+    me.total = heights.length;
     $("#pvStatus").remove();
     const wrap = $("#pvPages");
-    for (let i = 1; i <= doc.numPages; i++){
-      const d = document.createElement("div"); d.className = "pdfv-page"; d.dataset.n = i;
-      d.style.aspectRatio = `1 / ${me.ratio}`;
-      d.innerHTML = `<span class="pdfv-num">${i}</span>`;
+    heights.forEach((h, k) => {
+      const n = k + 1;
+      const d = document.createElement("div"); d.className = "pdfv-page"; d.dataset.n = n;
+      d.style.aspectRatio = `1000 / ${h}`;
+      d.innerHTML = `<span class="pdfv-num">${n}</span><img alt="${n}쪽" decoding="async" data-src="journals/pages/${key}/${String(n).padStart(3, "0")}.webp">`;
       wrap.appendChild(d); me.pages.push(d);
-    }
+    });
     const scroller = $("#pvScroll");
     me.io = new IntersectionObserver(entries => {
-      for (const en of entries){
-        const n = +en.target.dataset.n;
-        if (en.isIntersecting) renderPdfPage(me, n); else unrenderPdfPage(me, n);
+      for (const en of entries) {
+        if (!en.isIntersecting) continue;
+        const img = en.target.querySelector("img");
+        if (img && !img.src) { img.src = img.dataset.src; img.addEventListener("load", () => en.target.classList.add("loaded"), {once:true}); }
+        me.io.unobserve(en.target);
       }
-    }, {root:scroller, rootMargin:"1200px 0px"});
+    }, {root:scroller, rootMargin:"1600px 0px"});
     me.pages.forEach(p => me.io.observe(p));
-    const target = me.pages[Math.min(Math.max(1, startPage||1), doc.numPages) - 1];
-    me.anchor = target;
+    const target = me.pages[Math.min(Math.max(1, startPage||1), me.total) - 1];
     scroller.scrollTop = target.offsetTop - 8;
-    ["wheel","touchstart","keydown","mousedown"].forEach(ev => scroller.addEventListener(ev, () => { me.anchor = null; }, {passive:true, once:true}));
     scroller.addEventListener("scroll", () => updatePvPage(me), {passive:true});
     updatePvPage(me);
   } catch(e){
     if (pv !== me) return;
     const st = $("#pvStatus");
-    if (st) st.innerHTML = `<b>PDF를 열지 못했어요</b><span class="small muted">네트워크 상태를 확인하고 다시 시도해 주세요.</span><button class="btn btn-primary btn-sm" id="pvRetry">다시 시도</button>`;
+    if (st) st.innerHTML = `<b>학회지를 열지 못했어요</b><span class="small muted">인터넷 연결을 확인하고 다시 시도해 주세요.</span><button class="btn btn-primary btn-sm" id="pvRetry">다시 시도</button>`;
     const r = $("#pvRetry"); r && r.addEventListener("click", () => openPdf(src, startPage, title));
   }
 }
 function updatePvPage(me){
-  const sc = $("#pvScroll"); if (!sc || !me.doc) return;
+  const sc = $("#pvScroll"); if (!sc || !me.total) return;
   const mid = sc.scrollTop + sc.clientHeight/3;
   let cur = 1; for (const p of me.pages){ if (p.offsetTop <= mid) cur = +p.dataset.n; else break; }
-  const el = $("#pvPage"); if (el) el.textContent = `${cur} / ${me.doc.numPages}쪽`;
-}
-async function renderPdfPage(me, n){
-  if (me.rendered.has(n) || !me.doc) return;
-  const holder = me.pages[n-1];
-  const token = {}; me.rendered.set(n, token);
-  try {
-    const page = await me.doc.getPage(n);
-    if (me.rendered.get(n) !== token) return;
-    const base = page.getViewport({scale:1});
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const scale = holder.clientWidth * dpr / base.width;
-    const vp = page.getViewport({scale});
-    const c = document.createElement("canvas"); c.width = Math.floor(vp.width); c.height = Math.floor(vp.height);
-    holder.style.aspectRatio = `${base.width} / ${base.height}`;
-    token.task = page.render({canvasContext:c.getContext("2d"), viewport:vp});
-    await token.task.promise;
-    if (me.rendered.get(n) !== token) return;
-    holder.querySelector("canvas")?.remove(); holder.appendChild(c);
-    if (me.anchor) { const sc = $("#pvScroll"); if (sc) sc.scrollTop = me.anchor.offsetTop - 8; }
-  } catch(e){ if (me.rendered.get(n) === token) me.rendered.delete(n); }
-}
-function unrenderPdfPage(me, n){
-  const t = me.rendered.get(n); if (!t) return;
-  try { t.task && t.task.cancel(); } catch(e) {}
-  me.rendered.delete(n);
-  const c = me.pages[n-1].querySelector("canvas"); if (c){ c.width = 0; c.height = 0; c.remove(); }
+  const el = $("#pvPage"); if (el) el.textContent = `${cur} / ${me.total}쪽`;
 }
 function setZoom(z){
-  const me = pv; if (!me || !me.doc || z === me.zoom) return;
+  const me = pv; if (!me || !me.total || z === me.zoom) return;
   const sc = $("#pvScroll"); const rel = sc.scrollTop / Math.max(1, sc.scrollHeight);
   me.zoom = z; const pg = $("#pvPages"); pg.style.width = (z*100) + "%"; pg.style.maxWidth = window.innerWidth >= 760 ? (760*z) + "px" : "none";
-  [...me.rendered.keys()].forEach(n => unrenderPdfPage(me, n));
   sc.scrollTop = rel * sc.scrollHeight;
-  me.pages.forEach(p => { me.io.unobserve(p); me.io.observe(p); });
 }
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-pdf]"); if (!b) return;

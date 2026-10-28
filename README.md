@@ -61,13 +61,14 @@ AI 요약은 서버에서 Claude API(`claude-opus-5-5`)를 호출합니다. 요�
 | `index.html`, `app.js` | 화면과 동작 |
 | `backend.js` | Firebase 연결(없으면 데모 모드) |
 | `journals.js` | 학회지 목록, 목차, 핵심 요약 |
-| `journals/*.pdf` | 학회지 원문 (5권·7권은 용량 때문에 두 파일로 나눔, 2권은 글자 깨짐을 고친 버전) |
+| `journals/pages/` | 학회지 원문의 모든 쪽을 고화질 이미지(WebP)로 바꾼 것. 휴대폰에서 PDF를 직접 그리면 일부 권의 한글이 깨져서 이 방식을 씀 |
+| `journals/pages.json` | 파일별 쪽 수와 쪽 비율 |
 | `journals/text.json` | AI 요약에 쓰는 보고서 원문 텍스트 |
 | `api/summarize.js` | AI 목차별 요약 서버 함수 |
 | `firestore.rules` | 데이터 보안 규칙 |
 | `manifest.webmanifest`, `sw.js`, `icons/` | 홈 화면 설치·오프라인 지원 |
 
-새 학회지를 추가하려면 `journals/`에 PDF를 넣고 `journals.js`에 항목을 추가하면 됩니다.
+새 학회지를 추가하려면 PDF를 쪽 이미지로 바꿔 `journals/pages/<파일이름>/001.webp …`로 넣고, `journals/pages.json`과 `journals.js`에 항목을 추가하면 됩니다.
 
 ## 알아둘 점
 
